@@ -36,13 +36,25 @@ export class PptxBuilder {
   }
 
   async build(): Promise<Blob> {
+    console.log(`[PptxBuilder] Starting build for ${this.plan.slides.length} slides...`);
+
     // ダイアグラムスライドの Mermaid コードを事前に PNG に変換
     await this.preRenderDiagrams();
 
+    console.log('[PptxBuilder] Adding slides to PPTX...');
     for (const sc of this.plan.slides) {
-      this.addSlide(sc);
+      try {
+        this.addSlide(sc);
+      } catch (e) {
+        console.error(`[PptxBuilder] Error adding slide ${sc.slide_number} (${sc.layout_type}):`, e);
+        // エラーが出ても他のスライドは続行
+      }
     }
-    return (await this.pptx.write({ outputType: 'blob' })) as Blob;
+
+    console.log('[PptxBuilder] Writing PPTX blob...');
+    const blob = (await this.pptx.write({ outputType: 'blob' })) as Blob;
+    console.log(`[PptxBuilder] Done! Blob size: ${blob.size} bytes`);
+    return blob;
   }
 
   /** ダイアグラムスライドの Mermaid → PNG を事前レンダリング */
@@ -50,16 +62,28 @@ export class PptxBuilder {
     const diagramSlides = this.plan.slides.filter(
       (s) => s.layout_type === 'diagram' && s.diagram?.mermaid_code
     );
-    for (const sc of diagramSlides) {
-      try {
-        const png = await renderMermaidToPng(sc.diagram!.mermaid_code);
-        if (png) {
-          this.diagramImages[sc.slide_number] = png;
+    console.log(`[PptxBuilder] Pre-rendering ${diagramSlides.length} diagram(s)...`);
+
+    // 全ダイアグラムを並行処理（各ダイアグラムは内部でタイムアウトあり）
+    const results = await Promise.allSettled(
+      diagramSlides.map(async (sc) => {
+        try {
+          console.log(`[PptxBuilder] Rendering diagram for slide ${sc.slide_number}...`);
+          const png = await renderMermaidToPng(sc.diagram!.mermaid_code);
+          if (png) {
+            this.diagramImages[sc.slide_number] = png;
+            console.log(`[PptxBuilder] Diagram for slide ${sc.slide_number} rendered successfully`);
+          } else {
+            console.warn(`[PptxBuilder] Diagram for slide ${sc.slide_number} returned null`);
+          }
+        } catch (e) {
+          console.warn(`[PptxBuilder] Mermaid render failed for slide ${sc.slide_number}:`, e);
         }
-      } catch (e) {
-        console.warn(`[PptxBuilder] Mermaid render failed for slide ${sc.slide_number}:`, e);
-      }
-    }
+      })
+    );
+
+    const succeeded = results.filter((r) => r.status === 'fulfilled').length;
+    console.log(`[PptxBuilder] Diagram pre-render complete: ${succeeded}/${diagramSlides.length}`);
   }
 
   private addSlide(sc: SlideContent): void {

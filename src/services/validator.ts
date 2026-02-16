@@ -1,4 +1,4 @@
-import type { PresentationPlan, SlideContent } from '../schemas';
+import type { PresentationPlan } from '../schemas';
 
 export interface ValidationWarning {
   slideNumber: number;

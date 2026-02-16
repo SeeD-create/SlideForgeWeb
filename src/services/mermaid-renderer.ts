@@ -21,6 +21,20 @@ function ensureInit() {
 }
 
 /**
+ * Promise にタイムアウトを付与する
+ */
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`Timeout: ${label} took longer than ${ms}ms`));
+    }, ms);
+    promise
+      .then((val) => { clearTimeout(timer); resolve(val); })
+      .catch((err) => { clearTimeout(timer); reject(err); });
+  });
+}
+
+/**
  * Mermaid コードを PNG data URL に変換する。
  * @returns data:image/png;base64,... 形式の文字列。失敗時は null。
  */
@@ -33,12 +47,27 @@ export async function renderMermaidToPng(
 
   try {
     const id = `mermaid-export-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const { svg } = await mermaid.render(id, code);
 
-    // SVG → Canvas → PNG
-    return await svgToPng(svg, width, height);
+    // Mermaid レンダリングに 10 秒のタイムアウトを設定
+    const { svg } = await withTimeout(
+      mermaid.render(id, code),
+      10000,
+      'Mermaid render'
+    );
+
+    // SVG → Canvas → PNG (5 秒タイムアウト)
+    return await withTimeout(
+      svgToPng(svg, width, height),
+      5000,
+      'SVG to PNG conversion'
+    );
   } catch (e) {
     console.warn('[MermaidRenderer] Failed to render:', e);
+    // 残留 DOM 要素をクリーンアップ
+    try {
+      const leftover = document.querySelectorAll('[id^="mermaid-export-"]');
+      leftover.forEach((el) => el.remove());
+    } catch { /* ignore */ }
     return null;
   }
 }

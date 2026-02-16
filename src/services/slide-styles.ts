@@ -64,7 +64,10 @@ export class SlideStyles {
   textDark: string;
   textLight: string;
 
-  constructor(public profile: LecturerProfile) {
+  profile: LecturerProfile;
+
+  constructor(profile: LecturerProfile) {
+    this.profile = profile;
     this.primary = profile.colors.primary;
     this.secondary = profile.colors.secondary;
     this.accent = profile.colors.accent;

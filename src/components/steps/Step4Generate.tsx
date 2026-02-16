@@ -16,7 +16,6 @@ export function Step4Generate() {
     geminiApiKey,
     error,
     setGenerating,
-    setProgress,
     setError,
     setStep,
   } = useAppStore();

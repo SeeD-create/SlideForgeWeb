@@ -63,12 +63,13 @@ export class ImageGenerator {
         numberOfImages: 1,
         aspectRatio: '16:9',
         outputMimeType: 'image/png',
-        personGeneration: 'DONT_ALLOW',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        personGeneration: 'DONT_ALLOW' as any,
       },
     });
 
     if (response.generatedImages && response.generatedImages.length > 0) {
-      const imageBytes = response.generatedImages[0].image.imageBytes;
+      const imageBytes = response.generatedImages[0]?.image?.imageBytes;
       return `data:image/png;base64,${imageBytes}`;
     }
 

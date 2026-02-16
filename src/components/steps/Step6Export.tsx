@@ -25,11 +25,22 @@ export function Step6Export() {
   const handleExportPptx = async () => {
     setIsExporting(true);
     try {
+      console.log('[Export] Starting PPTX build...');
       const builder = new PptxBuilder(plan, profile, generatedImages);
-      const blob = await builder.build();
+
+      // ビルド全体に 60 秒のタイムアウト
+      const buildPromise = builder.build();
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('PPTX ビルドがタイムアウトしました（60秒）')), 60000)
+      );
+
+      const blob = await Promise.race([buildPromise, timeoutPromise]);
+      console.log('[Export] PPTX build completed, size:', blob.size);
+
       const filename = `${plan.lecture_title || plan.paper_title || 'presentation'}.pptx`;
       saveAs(blob, filename);
       setExported(true);
+      console.log('[Export] File download triggered:', filename);
     } catch (e) {
       console.error('PPTX export failed:', e);
       alert(`エクスポートエラー: ${e instanceof Error ? e.message : 'Unknown'}`);

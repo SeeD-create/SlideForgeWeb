@@ -1,5 +1,3 @@
-import type { PresentationPlan } from '../schemas';
-
 interface CreateStructuredParams {
   system: string;
   userContent: string;
