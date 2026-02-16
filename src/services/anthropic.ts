@@ -13,7 +13,8 @@ interface CreateStructuredParams {
 export class AnthropicClient {
   private apiKey: string;
   private model: string;
-  private baseUrl = '/api/anthropic';
+  // 開発時は Vite proxy、本番は直接 Anthropic API を呼ぶ
+  private baseUrl = import.meta.env.DEV ? '/api/anthropic' : 'https://api.anthropic.com';
   private maxRetries = 3;
 
   constructor(apiKey: string, model = 'claude-sonnet-4-20250514') {
