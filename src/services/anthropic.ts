@@ -8,16 +8,42 @@ interface CreateStructuredParams {
   temperature?: number;
 }
 
+/**
+ * Anthropic API クライアント
+ *
+ * - 開発時: Vite proxy (/api/anthropic) → api.anthropic.com（apiKey をヘッダーに付与）
+ * - 本番時: Netlify Functions (/api/anthropic) → サーバーサイドで apiKey 注入
+ */
 export class AnthropicClient {
   private apiKey: string;
   private model: string;
-  // 開発時は Vite proxy、本番は直接 Anthropic API を呼ぶ
-  private baseUrl = import.meta.env.DEV ? '/api/anthropic' : 'https://api.anthropic.com';
   private maxRetries = 3;
+  private isDev = import.meta.env.DEV;
 
   constructor(apiKey: string, model = 'claude-sonnet-4-20250514') {
     this.apiKey = apiKey;
     this.model = model;
+  }
+
+  private get baseUrl(): string {
+    // 開発環境・本番環境どちらも /api/anthropic を使う
+    // 開発: Vite proxy → api.anthropic.com
+    // 本番: Netlify redirects → /.netlify/functions/anthropic-proxy
+    return '/api/anthropic';
+  }
+
+  private get headers(): Record<string, string> {
+    const h: Record<string, string> = {
+      'content-type': 'application/json',
+    };
+    if (this.isDev) {
+      // 開発時のみ直接 API キーを送る（Vite proxy 経由）
+      h['x-api-key'] = this.apiKey;
+      h['anthropic-version'] = '2023-06-01';
+      h['anthropic-dangerous-direct-browser-access'] = 'true';
+    }
+    // 本番時は Netlify Function がサーバーサイドで apiKey を付与
+    return h;
   }
 
   async createStructured<T = unknown>(params: CreateStructuredParams): Promise<T> {
@@ -42,12 +68,7 @@ export class AnthropicClient {
       try {
         const response = await fetch(`${this.baseUrl}/v1/messages`, {
           method: 'POST',
-          headers: {
-            'content-type': 'application/json',
-            'x-api-key': this.apiKey,
-            'anthropic-version': '2023-06-01',
-            'anthropic-dangerous-direct-browser-access': 'true',
-          },
+          headers: this.headers,
           body: JSON.stringify(body),
         });
 
@@ -87,12 +108,7 @@ export class AnthropicClient {
   async createMessage(system: string, userContent: string): Promise<string> {
     const response = await fetch(`${this.baseUrl}/v1/messages`, {
       method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-api-key': this.apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-      },
+      headers: this.headers,
       body: JSON.stringify({
         model: this.model,
         max_tokens: 8192,

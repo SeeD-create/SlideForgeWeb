@@ -1,11 +1,13 @@
 import { create } from 'zustand';
 
 /**
- * APIキーは環境変数（ビルド時埋め込み）から取得。
- * ユーザーによるキー入力は不要。
+ * APIキーの取得方法:
+ * - 開発時: VITE_ プレフィックス付き環境変数からビルド時に埋め込み（Vite proxy 用）
+ * - 本番時: Netlify Functions がサーバーサイドでキーを注入するため不要
+ *          （空文字列でOK。フロントからキーを送らない）
  */
-const ANTHROPIC_API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY || '';
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
+const DEV_ANTHROPIC_KEY = import.meta.env.DEV ? (import.meta.env.VITE_ANTHROPIC_API_KEY || '') : '';
+const DEV_GEMINI_KEY = import.meta.env.DEV ? (import.meta.env.VITE_GEMINI_API_KEY || '') : '';
 
 interface GenerationProgress {
   stage: string;
@@ -34,8 +36,8 @@ export const useAppStore = create<AppState>()(
   (set, get) => ({
     currentStep: 1,
     maxReachedStep: 1,
-    anthropicApiKey: ANTHROPIC_API_KEY,
-    geminiApiKey: GEMINI_API_KEY,
+    anthropicApiKey: DEV_ANTHROPIC_KEY,
+    geminiApiKey: DEV_GEMINI_KEY,
     isGenerating: false,
     generationProgress: null,
     error: null,

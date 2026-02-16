@@ -2,6 +2,22 @@
   command = "npm run build"
   publish = "dist"
 
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# API proxy redirects (must be before the catch-all)
+[[redirects]]
+  from = "/api/anthropic/*"
+  to = "/.netlify/functions/anthropic-proxy"
+  status = 200
+
+[[redirects]]
+  from = "/api/gemini/*"
+  to = "/.netlify/functions/gemini-proxy"
+  status = 200
+
+# SPA catch-all (must be last)
 [[redirects]]
   from = "/*"
   to = "/index.html"
